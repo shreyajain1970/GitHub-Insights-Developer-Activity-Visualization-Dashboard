@@ -19,7 +19,7 @@ function App() {
   const [reposWithLanguages, setReposWithLanguages] = useState([]);
   const [rawCommitActivities, setRawCommitActivities] = useState([]);
   const [rateLimitRemaining,setRateLimitRemaining] = useState(null);
-
+  const [loadingStage, setLoadingStage] = useState(''); // '' | 'fetching user' | 'fetching repos' | 'fetching languages' | 'fetching commit activity'
   const [dateRangeDays, setDateRangeDays] = useState(365);
   const [repoTypeFilter, setRepoTypeFilter] = useState('all'); // 'all' | 'original' | 'forks'
   const [languageFilter, setLanguageFilter] = useState(null); // null = show all
@@ -40,9 +40,11 @@ function App() {
     try {
       const user = await fetchUser(username);
       setProfile(user);
+      setLoadingStage('Fetching repositories...');
 
       const fetchedRepos = await fetchAllRepos(username);
       setRepos(fetchedRepos);
+      setLoadingStage('Fetching language data...');
 
       const fetchedReposWithLanguages = [];
       for (const repo of fetchedRepos) {
@@ -51,6 +53,7 @@ function App() {
       }
       setReposWithLanguages(fetchedReposWithLanguages);
       setLangData(aggregateLanguages(fetchedReposWithLanguages));
+      setLoadingStage('Fetching commit activity...');
 
             const commitActivitiesWithRepo = [];
       for (const repo of fetchedRepos) {
@@ -76,7 +79,12 @@ function App() {
 
       setStatus('done');
     } catch (err) {
-      setErrorMsg(err.message);
+      const messages = {
+        USER_NOT_FOUND: 'No GitHub user found with that username.',
+        RATE_LIMITED: 'GitHub API rate limit exceeded. Add a personal access token above, or wait for the limit to reset.',
+        UNKNOWN_ERROR: 'Something went wrong talking to GitHub. Please try again.',
+      };
+      setErrorMsg(messages[err.message] || 'Network error — check your connection and try again.');
       setStatus('error');
     }
   }
@@ -139,7 +147,7 @@ function App() {
         </div>
       )}
 
-      {status === 'loading' && <p>Loading...</p>}
+      {status === 'loading' && <p>Loading... {loadingStage}</p>}
       {status === 'error' && <p style={{ color: 'red' }}>Error: {errorMsg}</p>}
 
       {status === 'done' && (
@@ -177,6 +185,7 @@ function App() {
       {status === 'done' && profile && (
         <div style={{ marginTop: 20 }}>
           <h2>{profile.login}</h2>
+          {repos.length === 0 && <p>This user has no public repositories.</p>}
           <p>Public repos: {profile.public_repos}</p>
           <p>Longest streak: {streaks.longest} days</p>
           <p>Current streak: {streaks.current} days</p>
