@@ -21,33 +21,25 @@ export function computeStreaks(dateMap) {
     .filter((d) => dateMap[d] > 0)
     .sort();
 
-  let longest = 0;
-  let running = 0;
-  let prevDate = null;
-
-  for (const dateStr of dates) {
-    const curDate = new Date(dateStr);
-    if (prevDate) {
-      const diffDays = Math.round((curDate - prevDate) / 86400000);
-      if (diffDays === 1) {
-        running += 1;
-      } else {
-        running = 1; // reset streak, but this day itself starts a new one
-      }
-    } else {
-      running = 1;
-    }
-    longest = Math.max(longest, running);
-    prevDate = curDate;
+  if (dates.length === 0) {
+    return { longest: 0, current: 0 };
   }
 
-  let current = 0;
-  let cursor = new Date();
-  while (true) {
-    const key = cursor.toISOString().slice(0, 10);
-    if (dateMap[key] > 0) {
+  // Longest streak anywhere in the history
+  let longest = 1;
+  let running = 1;
+  for (let i = 1; i < dates.length; i++) {
+    const diffDays = Math.round((new Date(dates[i]) - new Date(dates[i - 1])) / 86400000);
+    running = diffDays === 1 ? running + 1 : 1;
+    longest = Math.max(longest, running);
+  }
+
+  // Current streak = consecutive days ending at the most recent active date
+  let current = 1;
+  for (let i = dates.length - 1; i > 0; i--) {
+    const diffDays = Math.round((new Date(dates[i]) - new Date(dates[i - 1])) / 86400000);
+    if (diffDays === 1) {
       current++;
-      cursor.setDate(cursor.getDate() - 1);
     } else {
       break;
     }
