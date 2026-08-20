@@ -4,14 +4,14 @@ import { fetchUser, fetchAllRepos, fetchLanguages, fetchCommitActivity } from '.
 import { aggregateLanguages } from './analysis/languages';
 import { bucketCommitsByDate, computeStreaks } from './analysis/heatmap';
 import LanguageChart from './components/LanguageChart';
-
+import CommitHeatmap from './components/CommitHeatmap';
 function App() {
   const [status, setStatus] = useState('idle'); // idle | loading | error | done
   const [profile, setProfile] = useState(null);
   const [langData, setLangData] = useState([]);
   const [streaks, setStreaks] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
-
+  const [dateMap, setDateMap] = useState({}); // New state for dateMap
   async function handleSearch(username) {
     if (!username.trim()) return;
     setStatus('loading');
@@ -22,6 +22,7 @@ function App() {
       setProfile(user);
 
       const repos = await fetchAllRepos(username);
+
 
       const reposWithLanguages = [];
       for (const repo of repos) {
@@ -41,9 +42,10 @@ function App() {
         }
       }
       console.log('Total commitActivities collected:', commitActivities.length);
-      const dateMap = bucketCommitsByDate(commitActivities);
-      console.log('dateMap:', dateMap);
-      setStreaks(computeStreaks(dateMap));
+      const computedDateMap = bucketCommitsByDate(commitActivities);
+      setDateMap(computedDateMap);
+      console.log('dateMap:', computedDateMap);
+      setStreaks(computeStreaks(computedDateMap));
       setStatus('done');
     } catch (err) {
       setErrorMsg(err.message);
@@ -77,6 +79,7 @@ function App() {
 
           <h3>Top languages</h3>
           <LanguageChart langData={langData} />
+          <CommitHeatmap dateMap={dateMap} />
           <ul>
             {langData.slice(0, 5).map((l) => (
               <li key={l.lang}>
