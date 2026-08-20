@@ -5,7 +5,7 @@ import { aggregateLanguages } from './analysis/languages';
 import { bucketCommitsByDate, computeStreaks } from './analysis/heatmap';
 import LanguageChart from './components/LanguageChart';
 import CommitHeatmap from './components/CommitHeatmap';
-
+import MoversTable from './components/MoversTable';
 function App() {
   const [status, setStatus] = useState('idle'); // idle | loading | error | done
   const [profile, setProfile] = useState(null);
@@ -169,7 +169,8 @@ function App() {
 
           <h3>Commit activity</h3>
           <CommitHeatmap dateMap={filteredDateMap} />
-
+          <h3>Repos</h3>
+          <MoversTable repos={filteredRepos} reposWithLanguages={filteredReposWithLanguages}/>
           <ul>
             {displayLangData.slice(0, 5).map((l) => (
               <li key={l.lang}>
