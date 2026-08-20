@@ -1,35 +1,78 @@
-import { useEffect } from 'react';
+import { useState } from 'react';
+import UserSearch from './components/UserSearch';
+import { fetchUser, fetchAllRepos, fetchLanguages, fetchCommitActivity } from './api/github';
 import { aggregateLanguages } from './analysis/languages';
-import { computeStreaks } from './analysis/heatmap';
+import { bucketCommitsByDate, computeStreaks } from './analysis/heatmap';
 
 function App() {
-  useEffect(() => {
-    // Test language aggregation
-    const fakeRepos = [
-      { languages: { JavaScript: 1000, Python: 500 } },
-      { languages: { JavaScript: 500, HTML: 200 } },
-    ];
-    console.log('Aggregated languages:', aggregateLanguages(fakeRepos));
+  const [status, setStatus] = useState('idle'); // idle | loading | error | done
+  const [profile, setProfile] = useState(null);
+  const [langData, setLangData] = useState([]);
+  const [streaks, setStreaks] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
 
-    // Test streak calculation
-    const today = new Date();
-    const fmt = (d) => d.toISOString().slice(0, 10);
-    const d0 = fmt(today);
-    const d1 = fmt(new Date(today - 1 * 86400000));
-    const d2 = fmt(new Date(today - 2 * 86400000));
-    const d5 = fmt(new Date(today - 5 * 86400000));
-    const d6 = fmt(new Date(today - 6 * 86400000));
+  async function handleSearch(username) {
+    if (!username.trim()) return;
+    setStatus('loading');
+    setErrorMsg('');
 
-    const fakeDateMap = {
-      [d0]: 2, [d1]: 1, [d2]: 3, // 3-day streak ending today
-      [d5]: 1, [d6]: 1,          // separate 2-day streak, broken by a gap
-    };
-    console.log('Streaks:', computeStreaks(fakeDateMap));
-  }, []);
+    try {
+      const user = await fetchUser(username);
+      setProfile(user);
+
+      const repos = await fetchAllRepos(username);
+
+      const reposWithLanguages = [];
+      for (const repo of repos) {
+        const languages = await fetchLanguages(username, repo.name);
+        reposWithLanguages.push({ repo, languages });
+      }
+      setLangData(aggregateLanguages(reposWithLanguages));
+
+      const commitActivities = [];
+      for (const repo of repos) {
+        try {
+          const activity = await fetchCommitActivity(username, repo.name);
+          if (Array.isArray(activity)) commitActivities.push(activity);
+        } catch {
+          // some repos return 202 while GitHub computes stats — skip for now
+        }
+      }
+      const dateMap = bucketCommitsByDate(commitActivities);
+      setStreaks(computeStreaks(dateMap));
+
+      setStatus('done');
+    } catch (err) {
+      setErrorMsg(err.message);
+      setStatus('error');
+    }
+  }
 
   return (
-    <div>
+    <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
       <h1>GitHub Insights</h1>
+      <UserSearch onSearch={handleSearch} />
+
+      {status === 'loading' && <p>Loading...</p>}
+      {status === 'error' && <p style={{ color: 'red' }}>Error: {errorMsg}</p>}
+
+      {status === 'done' && profile && (
+        <div style={{ marginTop: 20 }}>
+          <h2>{profile.login}</h2>
+          <p>Public repos: {profile.public_repos}</p>
+          <p>Longest streak: {streaks.longest} days</p>
+          <p>Current streak: {streaks.current} days</p>
+
+          <h3>Top languages</h3>
+          <ul>
+            {langData.slice(0, 5).map((l) => (
+              <li key={l.lang}>
+                {l.lang}: {l.pct.toFixed(1)}%
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
