@@ -6,6 +6,8 @@ import { bucketCommitsByDate, computeStreaks } from './analysis/heatmap';
 import LanguageChart from './components/LanguageChart';
 import CommitHeatmap from './components/CommitHeatmap';
 import MoversTable from './components/MoversTable';
+import { useEffect } from 'react';
+
 function App() {
   const [status, setStatus] = useState('idle'); // idle | loading | error | done
   const [profile, setProfile] = useState(null);
@@ -16,10 +18,19 @@ function App() {
   const [repos, setRepos] = useState([]);
   const [reposWithLanguages, setReposWithLanguages] = useState([]);
   const [rawCommitActivities, setRawCommitActivities] = useState([]);
+  const [rateLimitRemaining,setRateLimitRemaining] = useState(null);
 
   const [dateRangeDays, setDateRangeDays] = useState(365);
   const [repoTypeFilter, setRepoTypeFilter] = useState('all'); // 'all' | 'original' | 'forks'
   const [languageFilter, setLanguageFilter] = useState(null); // null = show all
+
+  useEffect(() => {
+    function handleRateLimitUpdate(e) {
+      setRateLimitRemaining(e.detail);
+    }
+    window.addEventListener('rateLimitUpdate', handleRateLimitUpdate);
+    return () => window.removeEventListener('rateLimitUpdate', handleRateLimitUpdate);
+  }, []);
 
   async function handleSearch(username) {
     if (!username.trim()) return;
@@ -121,6 +132,12 @@ function App() {
           style={{ width: 320 }}
         />
       </div>
+
+      {rateLimitRemaining !== null && rateLimitRemaining < 10 && (
+        <div style={{ background: '#fff3cd', color: '#856404', padding: 8, borderRadius: 4, marginBottom: 10 }}>
+          ⚠️ GitHub API rate limit low: {rateLimitRemaining} requests remaining. Add a token above if you haven't, or wait for the limit to reset.
+        </div>
+      )}
 
       {status === 'loading' && <p>Loading...</p>}
       {status === 'error' && <p style={{ color: 'red' }}>Error: {errorMsg}</p>}
