@@ -24,12 +24,7 @@ calculation, language aggregation — rather than infrastructure.
 
 ## Known limitations
 
-- **Language filter doesn't affect the commit heatmap.** GitHub's 
-`commit_activity` endpoint reports commits per day per repo, with no 
-per-commit language data. True language-level heatmap filtering would 
-require fetching and diffing individual commits — out of scope given the 
-added API cost. The language filter does correctly narrow the language 
-breakdown chart.
+- **Language filtering on the commit heatmap is an approximation. GitHub's commit_activity endpoint reports commits per day per repo, with no per-commit language data — true filtering would require fetching and diffing every individual commit's files, which isn't practical at this scope. Instead, when a language filter is active, the heatmap includes commits from any repo that contains that language (not necessarily as its dominant language). This can slightly over-include commits from polyglot repos, but it's a reasonable tradeoff given the data GitHub exposes cheaply.
 - **Streak totals reflect full history**, not the currently selected 
 date-range filter, since streaks are meant to represent overall activity 
 rather than a filtered window.
