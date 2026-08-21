@@ -109,22 +109,33 @@ function App() {
     ? filteredLangData.filter((l) => l.lang === languageFilter)
     : filteredLangData;
 
-    const filteredDateMap = useMemo(() => {
-    const filteredNames = new Set(filteredRepos.map((r) => r.name));
-    const relevantActivities = rawCommitActivities
-      .filter((c) => filteredNames.has(c.repoName))
-      .map((c) => c.activity);
+  const filteredDateMap = useMemo(() => {
+  let reposToInclude = filteredRepos;
 
-    const bucketed = bucketCommitsByDate(relevantActivities);
+  if (languageFilter) {
+    const namesWithLang = new Set(
+      filteredReposWithLanguages
+        .filter(({ languages }) => Object.keys(languages).includes(languageFilter))
+        .map(({ repo }) => repo.name)
+    );
+    reposToInclude = filteredRepos.filter((r) => namesWithLang.has(r.name));
+  }
 
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - dateRangeDays);
-    const result = {};
-    for (const [date, count] of Object.entries(bucketed)) {
-      if (new Date(date) >= cutoff) result[date] = count;
-    }
-    return result;
-  }, [rawCommitActivities, filteredRepos, dateRangeDays]);
+  const includeNames = new Set(reposToInclude.map((r) => r.name));
+  const relevantActivities = rawCommitActivities
+    .filter((c) => includeNames.has(c.repoName))
+    .map((c) => c.activity);
+
+  const bucketed = bucketCommitsByDate(relevantActivities);
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - dateRangeDays);
+  const result = {};
+  for (const [date, count] of Object.entries(bucketed)) {
+    if (new Date(date) >= cutoff) result[date] = count;
+  }
+  return result;
+}, [rawCommitActivities, filteredRepos, filteredReposWithLanguages, languageFilter, dateRangeDays]);
 
   return (
     <div style={{ padding: 20, fontFamily: 'sans-serif' }}>
